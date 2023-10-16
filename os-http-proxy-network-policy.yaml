@@ -1,0 +1,28 @@
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: http-proxy-np
+  namespace: ip-allowlisting
+spec:
+  podSelector:
+    matchLabels:
+      app: http-proxy-echo-ip
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8443
+      from:
+        # internal cluster IP ranges
+        - ipBlock:
+            cidr: 192.0.0.0/8
+        - ipBlock:
+            cidr: 172.0.0.0/8
+        - ipBlock:
+            cidr: 10.0.0.0/8
+        # public allowlistd IPs
+        - ipBlock:
+            cidr: 1.2.3.4/32
+  policyTypes:
+    - Ingress

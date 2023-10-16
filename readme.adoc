@@ -1,0 +1,128 @@
+= Allow-listing Source IPs to Pods on OpenShift IBM Cloud
+
+== What's the issue?
+
+By default, on IBM Cloud, when OpenShift is deployed in a VPC, all Routes will use an specially provided, Application Load Balancer (ALB) by default.
+This is fine in most cases, but it has a specific drawback, in that, as configured, it doesn't pass through the IP address of the requesting clientfootnote:[Exposing apps with load balancers for VPC
+ https://cloud.ibm.com/docs/containers?topic=containers-vpc-lbaas].
+This makes it impossible to perform IP allow-listing via a NetworkPolicy.
+
+== The Solution
+
+In contrast to an ALB, a Network Load Balancer (NBL) does pass through the client's IP addressfootnote:[b].
+There is a specific way to create an NBL from OpenShift, as a Service, which will be exposed directly via an assigned host name.
+However, this lacks the built-in TLS handling that we would have gotten had we used a Route.
+If your application Pods handle TLS natively this isn't an issue.
+But that's rarely the case, so we need another piece, a custom HTTP/S proxy to sit between the NLB and the application Pods, that will terminate the TLS and proxy traffic to the application's plain HTTP port.
+
+== Getting Started
+
+Log in to your OpenShift cluster and create a new namespace/project:
+
+[source,bash]
+oc new-project ip-allowlisting
+
+Let's use "echo IP" as our sample app, so we can see the effects of the NLP in the application as well as the network policy.
+We'll create a deployment, and expose it as a service internally within the cluster, but will stop short of exposing it publicly via a route.
+
+[source,bash]
+oc create deployment echo-ip --image=greenstatic/echo-ip
+oc expose deployment echo-ip --port 8080
+oc get services
+
+=== (Optional Side Quest)
+
+At this point we would normally expose the deployment as a service, and then the service as a route.
+Feel free to do this now to check that your IP address really isn't being passed all the way to your pod.
+
+[source,bash]
+oc expose service echo-ip
+curl http://echo-ip-ip-allowlisting.`oc get ingresses.config/cluster -o jsonpath={.spec.domain}`
+curl http://ipv4.icanhazip.com
+
+Compare the "remoteIP" value of the first curl to the output of the second.
+If they're the same, congratulations the world has moved on and this tutorial is no longer necessary!
+If they're not the same, then we're on the right track.
+Let's clean up our test service and route and move on.
+
+[source,bash]
+oc delete route echo-ip
+
+Now that we've proven the need for an NLP, let's create one.
+
+=== Deploy a HTTP/S Proxy
+
+At this point we need to a proxy that can sit between the NLP and the application Pods, performing TLS termination for us.
+This is the core of what this project is about.
+The nginx folder contains the proxy configuration that will terminate HTTPS traffic and proxy to our echo-ip service over regular HTTP.
+The Dockerfile is a multi-arch build that will build and push the image to your Docker Hub account.
+
+NOTE: Please be sure to replace <repository> below with your own repository.
+
+[source,bash]
+docker build --push --tag <repository>/http-proxy-echo-ip:latest .
+
+If your docker hub repositories are set to private by default, now is a good time to either switch this image to public, or add a docker pull secret to the ip-allowlist project.
+
+Now create the deployment for the HTTP proxy image.
+
+[source,bash]
+oc create deployment http-proxy-echo-ip --image=spruceki/http-proxy-echo-ip:latest
+
+=== Create the NLP
+
+CAUTION: This step will spin up an NLB in your IBM Cloud account, potentially incurring charges.
+
+Now we create the NLP by applying a YAML fragment to our cluster.
+This fragment was created using instructions from the IBM Kubernetes Guidefootnote:[IBM Kubernetes Guide: Setting up a Network Load Balancer for VPC
+https://cloud.ibm.com/docs/containers?topic=containers-vpc-lbaas#setup_vpc_nlb]
+
+[source,bash]
+oc apply -f os-network-load-balancer.yaml
+oc get services
+
+You should see output similar to the following:
+
+[source]
+NAME      TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE
+vpc-nlb   LoadBalancer   172.21.129.113   <pending>     80:30103/TCP,443:30229/TCP   23s
+
+Note the status of <pending>.
+NLBs can take several minutes to provision, around 10 minutes in my experience.
+The NLB will eventually be visible in your IBM Cloud account, under VPC Infrastructure > Load Balancers > 'openshift-vpc-nlb-ip-allowlisting'.
+On that screen, find the hostname associated with the NLB and copy it to the clipboard.
+Run the following command, replacing <nlbHostname> with the hostname you just copied.
+
+[source,bash]
+curl --inescure https://<nlbHostname>
+
+NOTE: Note that the "ip" and "forwardedForIP in the response will be your public IP, and the "remoteIP" will still be an internal IP of the cluster.
+As we'll demonstrate, this is enough to allow the NetworkPolicy allowlisting to work.
+
+=== Apply the NetworkPolicy
+
+In its current state, the network policy YAML fragment will allow traffic from within the cluster, and from the external IP address 1.2.3.4.
+So if we apply it, we should find that we're no longer able to access the echo-ip service.
+
+[source,bash]
+oc apply -f os-http-proxy-network-policy.yaml
+curl --inescure https://<nlbHostname> --connect-timeout 6
+
+This should return a "Timeout was reached" error.
+So far this only proves that the network policy has successfully blocked external traffic.
+Let's see if we can let ourselves in again.
+Update the os-http-proxy-network-policy.yaml file, replacing 1.2.3.4 with your public IP address.
+
+[source,yaml]
+    ...
+    # public allowlistd IPs
+    - ipBlock:
+        cidr: <1.2.3.4>/32
+    ...
+
+Reapply the yaml NetWorkPolicy, refetch the URL and you should now have access:
+
+[source,bash]
+oc apply -f os-http-proxy-network-policy.yaml
+curl --inescure https://<nlbHostname> --connect-timeout 6
+
