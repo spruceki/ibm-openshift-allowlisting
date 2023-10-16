@@ -3,17 +3,16 @@
 == What's the issue?
 
 By default, on IBM Cloud, when OpenShift is deployed in a VPC, all Routes will use an specially provided, Application Load Balancer (ALB) by default.
-This is fine in most cases, but it has a specific drawback, in that, as configured, it doesn't pass through the IP address of the requesting clientfootnote:[Exposing apps with load balancers for VPC
- https://cloud.ibm.com/docs/containers?topic=containers-vpc-lbaas].
+This is fine in most cases, but it has a specific drawback, in that, as configured, it doesn't pass through the IP address of the requesting clientfootnote:[https://cloud.ibm.com/docs/containers?topic=containers-vpc-lbaas[Exposing apps with load balancers for VPC]].
 This makes it impossible to perform IP allow-listing via a NetworkPolicy.
 
 == The Solution
 
-In contrast to an ALB, a Network Load Balancer (NBL) does pass through the client's IP addressfootnote:[b].
+In contrast to an ALB, a Network Load Balancer (NBL) does pass through the client's IP address.
 There is a specific way to create an NBL from OpenShift, as a Service, which will be exposed directly via an assigned host name.
 However, this lacks the built-in TLS handling that we would have gotten had we used a Route.
 If your application Pods handle TLS natively this isn't an issue.
-But that's rarely the case, so we need another piece, a custom HTTP/S proxy to sit between the NLB and the application Pods, that will terminate the TLS and proxy traffic to the application's plain HTTP port.
+But that's not always the case, so we need another piece, a custom HTTP/S proxy to sit between the NLB and the application Pods, that will terminate the TLS and proxy traffic to the application's plain HTTP port.
 
 == Getting Started
 
@@ -32,7 +31,7 @@ oc get services
 
 === (Optional Side Quest)
 
-At this point we would normally expose the deployment as a service, and then the service as a route.
+At this point we would normally expose the service as a route.
 Feel free to do this now to check that your IP address really isn't being passed all the way to your pod.
 
 [source,bash]
@@ -43,19 +42,19 @@ curl http://ipv4.icanhazip.com
 Compare the "remoteIP" value of the first curl to the output of the second.
 If they're the same, congratulations the world has moved on and this tutorial is no longer necessary!
 If they're not the same, then we're on the right track.
-Let's clean up our test service and route and move on.
+Let's clean up our test route and move on.
 
 [source,bash]
 oc delete route echo-ip
 
-Now that we've proven the need for an NLP, let's create one.
+And now that we've proven the need for an NLP, let's create one.
 
 === Deploy a HTTP/S Proxy
 
 At this point we need to a proxy that can sit between the NLP and the application Pods, performing TLS termination for us.
-This is the core of what this project is about.
 The nginx folder contains the proxy configuration that will terminate HTTPS traffic and proxy to our echo-ip service over regular HTTP.
-The Dockerfile is a multi-arch build that will build and push the image to your Docker Hub account.
+The Dockerfile in this project brings it all together onto an nginx base image.
+Below is a Docker command that will build and push the image to your Docker Hub account.
 
 NOTE: Please be sure to replace <repository> below with your own repository.
 
