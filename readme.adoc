@@ -7,7 +7,12 @@ This is fine in most cases, but it has a specific drawback: as configured, it do
 This makes it impossible to perform IP allow-listing via a NetworkPolicy.
 
 ```mermaid
-include::doc/overview_alb.mmd[]
+flowchart LR
+    A[Browser] -->|https,1.2.3.4| B[ALB]
+    B --> |https,10.x.x.x|C(Route)
+    C --> |http,10.x.x.x|P{NetworkPolicy: <br />Allow 1.2.3.4}
+    P -->|❌|D(App Pod)
+    P --> |✅|E[️Drop]
 ```
 
 == The Solution
@@ -19,7 +24,13 @@ If your application Pods handle TLS natively this isn't an issue.
 But that's not always the case, so we need another piece, a custom HTTP/S proxy to sit between the NLB and the application Pods, that will terminate the TLS and proxy traffic to the application's plain HTTP port.
 
 ```mermaid
-include::doc/overview_nlb.mmd[]
+flowchart LR
+    A[Browser] -->|https,1.2.3.4| B[NLB]
+    B --> |https,1.2.3.4|C(NBL Service)
+    C --> |https,1.2.3.4|D(HTTP Proxy Pod)
+    D --> |http,1.2.3.4|P{NetworkPolicy: <br />Allow 1.2.3.4}
+    P -->|✅ http|E(App Pod)
+    P --> |❌|F[Drop]
 ```
 
 == Getting Started
