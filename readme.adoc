@@ -73,8 +73,7 @@ oc create deployment http-proxy-echo-ip --image=spruceki/http-proxy-echo-ip:late
 CAUTION: This step will spin up an NLB in your IBM Cloud account, potentially incurring charges.
 
 Now we create the NLP by applying a YAML fragment to our cluster.
-This fragment was created using instructions from the IBM Kubernetes Guidefootnote:[IBM Kubernetes Guide: Setting up a Network Load Balancer for VPC
-https://cloud.ibm.com/docs/containers?topic=containers-vpc-lbaas#setup_vpc_nlb]
+This fragment was created using instructions from the IBM Kubernetes Guidefootnote:[https://cloud.ibm.com/docs/containers?topic=containers-vpc-lbaas#setup_vpc_nlb[IBM Kubernetes Guide: Setting up a Network Load Balancer for VPC]]
 
 [source,bash]
 oc apply -f os-network-load-balancer.yaml
