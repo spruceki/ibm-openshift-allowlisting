@@ -8,21 +8,22 @@ This makes it impossible to perform IP allow-listing via a NetworkPolicy.
 
 == The Solution
 
-In contrast to an ALB, a Network Load Balancer (NBL) does pass through the client's IP address.
-There is a specific way to create an NBL from OpenShift, as a Service, which will be exposed directly via an assigned host name.
+In contrast to the default ALB, a Network Load Balancer (NBL) always passes through the client's IP address.
+There is a specific way to create an NBL as a Service in OpenShift, which will be exposed via an assigned host name.
 However, this lacks the built-in TLS handling that we would have gotten had we used a Route.
 If your application Pods handle TLS natively this isn't an issue.
-But that's not always the case, so we need another piece, a custom HTTP/S proxy to sit between the NLB and the application Pods, that will terminate the TLS and proxy traffic to the application's plain HTTP port.
+In all other cases we need another piece- a custom HTTP/S proxy to sit between the NLB and the application Pods, that will terminate the TLS and proxy traffic to the application's plain HTTP port.
 
 == Getting Started
 
-Log in to your OpenShift cluster and create a new namespace/project:
+If you want to perform the steps as you follow along, clone this project and cd into the 'ibm-openshift-allowlisting' directory.
+Then log in to your OpenShift cluster in IBM Cloud and create a new namespace/project:
 
 [source,bash]
 oc new-project ip-allowlisting
 
-Let's use "echo IP" as our sample app, so we can see the effects of the NLP in the application as well as the network policy.
-We'll create a deployment, and expose it as a service internally within the cluster, but will stop short of exposing it publicly via a route.
+Let's use "echo IP" as our sample app, so we can see the effects of the NLP in the application, as well as via the applied network policy.
+We'll create a deployment, and expose it as a service internally within the cluster, but will stop short of exposing it publicly via a route for now.
 
 [source,bash]
 oc create deployment echo-ip --image=greenstatic/echo-ip
@@ -42,12 +43,12 @@ curl http://ipv4.icanhazip.com
 Compare the "remoteIP" value of the first curl to the output of the second.
 If they're the same, congratulations the world has moved on and this tutorial is no longer necessary!
 If they're not the same, then we're on the right track.
-Let's clean up our test route and move on.
+Let's clean up our test route before moving on.
 
 [source,bash]
 oc delete route echo-ip
 
-And now that we've proven the need for an NLP, let's create one.
+Now that we've proven the need for an NLP, let's create one.
 
 === Deploy a HTTP/S Proxy
 
@@ -56,7 +57,7 @@ The nginx folder contains the proxy configuration that will terminate HTTPS traf
 The Dockerfile in this project brings it all together onto an nginx base image.
 Below is a Docker command that will build and push the image to your Docker Hub account.
 
-NOTE: Please be sure to replace <repository> below with your own repository.
+NOTE: Please be sure to replace <repository> below with your own Docker repository.
 
 [source,bash]
 docker build --push --tag <repository>/http-proxy-echo-ip:latest .
@@ -66,7 +67,7 @@ If your docker hub repositories are set to private by default, now is a good tim
 Now create the deployment for the HTTP proxy image.
 
 [source,bash]
-oc create deployment http-proxy-echo-ip --image=spruceki/http-proxy-echo-ip:latest
+oc create deployment http-proxy-echo-ip --image=<repository>/http-proxy-echo-ip:latest
 
 === Create the NLP
 
@@ -83,7 +84,7 @@ You should see output similar to the following:
 
 [source]
 NAME      TYPE           CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE
-vpc-nlb   LoadBalancer   172.21.129.113   <pending>     80:30103/TCP,443:30229/TCP   23s
+vpc-nlb   LoadBalancer   172.1.2.3        <pending>     80:30103/TCP,443:30229/TCP   23s
 
 Note the status of <pending>.
 NLBs can take several minutes to provision, around 10 minutes in my experience.
@@ -95,12 +96,12 @@ Run the following command, replacing <nlbHostname> with the hostname you just co
 curl --inescure https://<nlbHostname>
 
 NOTE: Note that the "ip" and "forwardedForIP in the response will be your public IP, and the "remoteIP" will still be an internal IP of the cluster.
-As we'll demonstrate, this is enough to allow the NetworkPolicy allowlisting to work.
+As we'll demonstrate, this is enough to allow the NetworkPolicy IP allowlisting to work.
 
 === Apply the NetworkPolicy
 
 In its current state, the network policy YAML fragment will allow traffic from within the cluster, and from the external IP address 1.2.3.4.
-So if we apply it, we should find that we're no longer able to access the echo-ip service.
+So if we apply it, we should find that we're no longer able to access the echo-ip service from outside the cluster.
 
 [source,bash]
 oc apply -f os-http-proxy-network-policy.yaml
@@ -118,7 +119,7 @@ Update the os-http-proxy-network-policy.yaml file, replacing 1.2.3.4 with your p
         cidr: <1.2.3.4>/32
     ...
 
-Reapply the yaml NetWorkPolicy, refetch the URL and you should now have access:
+Reapply the yaml NetworkPolicy, refetch the URL and you should now have access:
 
 [source,bash]
 oc apply -f os-http-proxy-network-policy.yaml
