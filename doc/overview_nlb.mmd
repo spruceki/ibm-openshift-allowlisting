@@ -4,4 +4,4 @@ flowchart LR
     C --> |https,1.2.3.4|D(HTTP Proxy Pod)
     D --> |http,1.2.3.4|P{NetworkPolicy: <br />Allow 1.2.3.4}
     P -->|✅ http|E(App Pod)
-    P --> |❌|F[🗑️ Drop]
+    P --> |❌|F[Drop]
