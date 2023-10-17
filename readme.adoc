@@ -7,7 +7,7 @@ This is fine in most cases, but it has a specific drawback: as configured, it do
 This makes it impossible to perform IP allow-listing via a NetworkPolicy.
 
 ```mermaid
-flowchart LR;
+flowchart LR
     A[Browser] -->|https,1.2.3.4| B[ALB]
     B --> |https,10.x.x.x|C(Route)
     C --> |http,10.x.x.x|P{NetworkPolicy: <br />Allow 1.2.3.4}
