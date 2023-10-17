@@ -2,9 +2,13 @@
 
 == What's the issue?
 
-By default, on IBM Cloud, when OpenShift is deployed in a VPC, all Routes will use an specially provided, Application Load Balancer (ALB) by default.
-This is fine in most cases, but it has a specific drawback, in that, as configured, it doesn't pass through the IP address of the requesting clientfootnote:[https://cloud.ibm.com/docs/containers?topic=containers-vpc-lbaas[Exposing apps with load balancers for VPC]].
+By default, on IBM Cloud, when OpenShift is deployed in a VPC, all Routes will use a specially provided, Application Load Balancer (ALB) by default.
+This is fine in most cases, but it has a specific drawback: as configured, it doesn't pass through the IP address of the requesting clientfootnote:[https://cloud.ibm.com/docs/containers?topic=containers-vpc-lbaas[Exposing apps with load balancers for VPC]].
 This makes it impossible to perform IP allow-listing via a NetworkPolicy.
+
+```mermaid
+include::doc/overview_alb.mmd[]
+```
 
 == The Solution
 
@@ -13,6 +17,10 @@ There is a specific way to create an NBL from OpenShift, as a Service, which wil
 However, this lacks the built-in TLS handling that we would have gotten had we used a Route.
 If your application Pods handle TLS natively this isn't an issue.
 But that's not always the case, so we need another piece, a custom HTTP/S proxy to sit between the NLB and the application Pods, that will terminate the TLS and proxy traffic to the application's plain HTTP port.
+
+```mermaid
+include::doc/overview_nlb.mmd[]
+```
 
 == Getting Started
 
