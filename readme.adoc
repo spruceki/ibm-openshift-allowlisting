@@ -8,11 +8,11 @@ This makes it impossible to perform IP allow-listing via a NetworkPolicy.
 
 ```mermaid
 flowchart LR;
-    A[Browser] -->|https,1.2.3.4| B[ALB];
-    B --> |https,10.x.x.x|C(Route);
-    C --> |http,10.x.x.x|P{NetworkPolicy: <br />Allow 1.2.3.4};
-    P -->|❌|D(App Pod);
-    P --> |✅|E[️Drop];
+    A[Browser] -->|https,1.2.3.4| B[ALB]
+    B --> |https,10.x.x.x|C(Route)
+    C --> |http,10.x.x.x|P{NetworkPolicy: <br />Allow 1.2.3.4}
+    P -->|x|D(App Pod)
+    P --> |http|E[️Drop]
 ```
 
 == The Solution
@@ -30,7 +30,7 @@ flowchart LR
     C --> |https,1.2.3.4|D(HTTP Proxy Pod)
     D --> |http,1.2.3.4|P{NetworkPolicy: <br />Allow 1.2.3.4}
     P -->|http|E(App Pod)
-    P --> |X|F[Drop]
+    P --> |x|F[Drop]
 ```
 
 == Getting Started

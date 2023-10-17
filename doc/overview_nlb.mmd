@@ -3,5 +3,5 @@ flowchart LR
     B --> |https,1.2.3.4|C(NBL Service)
     C --> |https,1.2.3.4|D(HTTP Proxy Pod)
     D --> |http,1.2.3.4|P{NetworkPolicy: <br />Allow 1.2.3.4}
-    P -->|✅ http|E(App Pod)
-    P --> |❌|F[Drop]
+    P -->|http|E(App Pod)
+    P --> |x|F[Drop]
