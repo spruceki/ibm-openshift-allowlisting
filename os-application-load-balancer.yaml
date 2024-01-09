@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: vpc-nlb-ip-allowlisting
+  name: vpc-alb-ip-allowlisting
   annotations:
-    service.kubernetes.io/ibm-load-balancer-cloud-provider-vpc-lb-name: "openshift-vpc-nlb-ip-allowlisting"
-    service.kubernetes.io/ibm-load-balancer-cloud-provider-enable-features: "nlb"
+    service.kubernetes.io/ibm-load-balancer-cloud-provider-vpc-lb-name: "openshift-vpc-alb-ip-allowlisting"
+    service.kubernetes.io/ibm-load-balancer-cloud-provider-enable-features: "proxy-protocol"
     service.kubernetes.io/ibm-load-balancer-cloud-provider-ip-type: "public"
 spec:
   type: LoadBalancer
