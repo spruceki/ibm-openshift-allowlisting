@@ -4,7 +4,7 @@
 
 By default, on IBM Cloud, when OpenShift is deployed in a VPC, all Routes will use a specially provided, Application Load Balancer (ALB) by default.
 This is fine in most cases, but it has a specific drawback: as configured, it doesn't pass through the IP address of the requesting clientfootnote:[https://cloud.ibm.com/docs/containers?topic=containers-vpc-lbaas[Exposing apps with load balancers for VPC]].
-This makes it impossible to perform IP allow-listing via a NetworkPolicy.
+This makes it impossible to perform IP allow-listing via traditional means, for example a NetworkPolicy or the "haproxy.router.openshift.io/ip_whitelist" Route annotation.
 
 == The Solution
 
