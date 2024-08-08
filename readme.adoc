@@ -22,7 +22,7 @@ Then log in to your OpenShift cluster in IBM Cloud and create a new namespace/pr
 [source,bash]
 oc new-project ip-allowlisting
 
-Let's use "echo IP" as our sample app, so we can see the effects of the NLP in the application, as well as via the applied network policy.
+Let's use "echo IP" as our sample app, so we can see the effects of the NLB in the application, as well as via the applied network policy.
 We'll create a deployment, and expose it as a service internally within the cluster, but will stop short of exposing it publicly via a route for now.
 
 [source,bash]
@@ -48,11 +48,11 @@ Let's clean up our test route before moving on.
 [source,bash]
 oc delete route echo-ip
 
-Now that we've proven the need for an NLP, let's create one.
+Now that we've proven the need for an NLB, let's create one.
 
 === Deploy a HTTP/S Proxy
 
-At this point we need to a proxy that can sit between the NLP and the application Pods, performing TLS termination for us.
+At this point we need to a proxy that can sit between the NLB and the application Pods, performing TLS termination for us.
 The nginx folder contains the proxy configuration that will terminate HTTPS traffic and proxy to our echo-ip service over regular HTTP.
 The Dockerfile in this project brings it all together onto an nginx base image.
 Below is a Docker command that will build and push the image to your Docker Hub account.
@@ -69,11 +69,11 @@ Now create the deployment for the HTTP proxy image.
 [source,bash]
 oc create deployment http-proxy-echo-ip --image=<repository>/http-proxy-echo-ip:latest
 
-=== Create the NLP
+=== Create the NLB
 
 CAUTION: This step will spin up an NLB in your IBM Cloud account, potentially incurring charges.
 
-Now we create the NLP by applying a YAML fragment to our cluster.
+Now we create the NLB by applying a YAML fragment to our cluster.
 This fragment was created using instructions from the IBM Kubernetes Guidefootnote:[https://cloud.ibm.com/docs/containers?topic=containers-vpc-lbaas#setup_vpc_nlb[IBM Kubernetes Guide: Setting up a Network Load Balancer for VPC]]
 
 [source,bash]
